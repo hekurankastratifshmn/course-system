@@ -1,0 +1,252 @@
+{
+  "info": {
+    "name": "University Course System",
+    "description": "One request per endpoint. The database starts with admin@uni-pr.edu. Run Login first. It saves the Bearer token. Create user saves userId, and also professorId or studentId from the role. Create course saves courseId. Enroll student saves enrollmentId. Upload material saves materialId. Change the body and run the same request again for another person or course.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      { "key": "token", "value": "{{token}}", "type": "string" }
+    ]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "token", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "professorId", "value": "" },
+    { "key": "studentId", "value": "" },
+    { "key": "courseId", "value": "" },
+    { "key": "enrollmentId", "value": "" },
+    { "key": "materialId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Login",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    pm.collectionVariables.set('token', pm.response.json().token);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": { "type": "noauth" },
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"admin@uni-pr.edu\",\n  \"password\": \"admin\"\n}"
+        },
+        "url": "{{baseUrl}}/auth/login",
+        "description": "Run this first. The token is saved and sent with the other requests."
+      }
+    },
+    {
+      "name": "Hello",
+      "request": { "method": "GET", "url": "{{baseUrl}}/hello" }
+    },
+    {
+      "name": "Database health",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "{{baseUrl}}/health",
+        "description": "UP means the API can reach MySQL."
+      }
+    },
+    {
+      "name": "Create user",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const user = pm.response.json();",
+              "    pm.collectionVariables.set('userId', user.id);",
+              "    if (user.role === 'PROFESSOR') {",
+              "        pm.collectionVariables.set('professorId', user.id);",
+              "    }",
+              "    if (user.role === 'STUDENT') {",
+              "        pm.collectionVariables.set('studentId', user.id);",
+              "    }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Arta Gashi\",\n  \"email\": \"arta.gashi@uni-pr.edu\",\n  \"role\": \"STUDENT\",\n  \"password\": \"student\"\n}"
+        },
+        "url": "{{baseUrl}}/users",
+        "description": "Role is STUDENT, PROFESSOR, or ADMIN. The password is saved as a hash. Change the name and email and run this again for another person. A PROFESSOR response saves professorId. A STUDENT response saves studentId. Get user uses the latest userId."
+      }
+    },
+    {
+      "name": "Get user",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/users/{{userId}}",
+        "description": "Uses the userId saved by Create user."
+      }
+    },
+    {
+      "name": "Create course",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    pm.collectionVariables.set('courseId', pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"CS301\",\n  \"name\": \"Cloud Computing\",\n  \"credits\": 6,\n  \"semester\": \"2026-W\"\n}"
+        },
+        "url": "{{baseUrl}}/courses",
+        "description": "The course starts OPEN. Saves courseId. Add \"professorId\": {{professorId}} after Create user with role PROFESSOR. Change the code and name and run this again for another course. The latest id is the one the other course requests use."
+      }
+    },
+    {
+      "name": "List courses",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/courses?semester=2026-W&status=OPEN",
+        "description": "semester and status are optional. status is OPEN or CLOSED. Remove either filter to widen the list."
+      }
+    },
+    {
+      "name": "Get course",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/courses/{{courseId}}"
+      }
+    },
+    {
+      "name": "Update course",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"CLOSED\"\n}" },
+        "url": "{{baseUrl}}/courses/{{courseId}}",
+        "description": "Send only the fields to change: code, name, credits, semester, status, professorId. status is OPEN or CLOSED."
+      }
+    },
+    {
+      "name": "Delete course",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/courses/{{courseId}}",
+        "description": "204 when the course has no enrollments and no files. 409 when it still has either."
+      }
+    },
+    {
+      "name": "Enroll student",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    pm.collectionVariables.set('enrollmentId', pm.response.json().enrollmentId);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"studentId\": {{studentId}}\n}" },
+        "url": "{{baseUrl}}/courses/{{courseId}}/enrollments",
+        "description": "Enrolls studentId in courseId. The course must be OPEN and the user must be a STUDENT. Saves enrollmentId. Set studentId to another student and run this again to enroll that student. The same student and course again returns 409. A closed course returns 409."
+      }
+    },
+    {
+      "name": "List enrollments",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/courses/{{courseId}}/enrollments",
+        "description": "Students still enrolled in courseId."
+      }
+    },
+    {
+      "name": "List student courses",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/students/{{studentId}}/courses",
+        "description": "Courses where studentId is enrolled."
+      }
+    },
+    {
+      "name": "Cancel enrollment",
+      "request": {
+        "method": "DELETE",
+        "url": "{{baseUrl}}/enrollments/{{enrollmentId}}",
+        "description": "Sets that enrollment to CANCELLED. Uses the enrollmentId saved by Enroll student."
+      }
+    },
+    {
+      "name": "Upload material",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    pm.collectionVariables.set('materialId', pm.response.json().id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "title", "value": "Syllabus", "type": "text" },
+            { "key": "file", "type": "file", "src": "" }
+          ]
+        },
+        "url": "{{baseUrl}}/courses/{{courseId}}/materials",
+        "description": "Choose a file. MySQL stores the title and the file name. The file bytes go in the storage folder. Saves materialId."
+      }
+    },
+    {
+      "name": "List materials",
+      "request": { "method": "GET", "url": "{{baseUrl}}/courses/{{courseId}}/materials" }
+    },
+    {
+      "name": "Download material",
+      "request": { "method": "GET", "url": "{{baseUrl}}/materials/{{materialId}}" }
+    },
+    {
+      "name": "Delete material",
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/materials/{{materialId}}" }
+    }
+  ]
+}
