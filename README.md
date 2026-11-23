@@ -227,6 +227,10 @@ export SPRING_DATASOURCE_PASSWORD="localdb"
 
 Files uploaded this way are saved in the `storage` folder of the project.
 
+## Deploy to an Ubuntu VM
+
+Build the API image on Windows, copy that image to the Ubuntu VM, and start it there. The VM does not clone the repository or compile the project. The steps are in [docs/create-dockerfile.md](docs/create-dockerfile.md).
+
 ## If something fails
 
 - **Compose says a variable is missing.** Copy `.env.example` to `.env` and run the command from the project folder.
